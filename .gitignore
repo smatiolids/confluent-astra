@@ -1,0 +1,15 @@
+# Ignore sensitive environment variables
+/demo/.env
+
+# Ignore generated files
+*.log
+*.tmp
+
+# Ignore IDE/editor files
+.DS_Store
+.idea/
+.vscode/
+
+.env
+secure*.zip
+venv

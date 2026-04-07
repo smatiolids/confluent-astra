@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  kafka-connect:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile.connect
+    hostname: kafka-connect
+    container_name: kafka-connect
+    env_file:
+      - ./demo/.env
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        export CONNECT_BOOTSTRAP_SERVERS="$$KAFKA_BOOTSTRAP_SERVERS"
+        export CONNECT_SASL_JAAS_CONFIG="org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$$CONFLUENT_API_KEY\" password=\"$$CONFLUENT_API_SECRET\";"
+        export CONNECT_CONSUMER_SASL_JAAS_CONFIG="$$CONNECT_SASL_JAAS_CONFIG"
+        export CONNECT_PRODUCER_SASL_JAAS_CONFIG="$$CONNECT_SASL_JAAS_CONFIG"
+        export CONNECT_ADMIN_SASL_JAAS_CONFIG="$$CONNECT_SASL_JAAS_CONFIG"
+        export CONNECT_SASL_JAAS_USERNAME="$$CONFLUENT_API_KEY"
+        export CONNECT_SASL_JAAS_PASSWORD="$$CONFLUENT_API_SECRET"
+        export CONNECT_CONSUMER_SASL_JAAS_USERNAME="$$CONFLUENT_API_KEY"
+        export CONNECT_CONSUMER_SASL_JAAS_PASSWORD="$$CONFLUENT_API_SECRET"
+        export CONNECT_PRODUCER_SASL_JAAS_USERNAME="$$CONFLUENT_API_KEY"
+        export CONNECT_PRODUCER_SASL_JAAS_PASSWORD="$$CONFLUENT_API_SECRET"
+        export CONNECT_ADMIN_SASL_JAAS_USERNAME="$$CONFLUENT_API_KEY"
+        export CONNECT_ADMIN_SASL_JAAS_PASSWORD="$$CONFLUENT_API_SECRET"
+        exec /etc/confluent/docker/run
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_GROUP_ID: compose-group
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      # For Confluent Cloud authentication
+      CONNECT_SECURITY_PROTOCOL: 'SASL_SSL'
+      CONNECT_SASL_MECHANISM: 'PLAIN'
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: 'SASL_SSL'
+      CONNECT_CONSUMER_SASL_MECHANISM: 'PLAIN'
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: 'SASL_SSL'
+      CONNECT_PRODUCER_SASL_MECHANISM: 'PLAIN'
+      CONNECT_ADMIN_SECURITY_PROTOCOL: 'SASL_SSL'
+      CONNECT_ADMIN_SASL_MECHANISM: 'PLAIN'
+    volumes:
+      - ./secure-connect-bundle:/opt/kafka-connect/datastax-astra:ro
+      - ./demo/connector-astra-sink.json:/etc/kafka-connect/connector-astra-sink.json:ro
+    networks:
+      - demo-network
+
+  # Optional: Local Kafka stack for standalone testing
+  # Uncomment the services below if you want to test with a local Kafka cluster
+  # instead of Confluent Cloud
+
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.0
+  #   hostname: zookeeper
+  #   container_name: zookeeper
+  #   ports:
+  #     - "2181:2181"
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   networks:
+  #     - demo-network
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.5.0
+  #   hostname: kafka
+  #   container_name: kafka
+  #   ports:
+  #     - "29092:29092"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://kafka:29092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #   depends_on:
+  #     - zookeeper
+  #   networks:
+  #     - demo-network
+
+networks:
+  demo-network:
+    driver: bridge
